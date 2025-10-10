@@ -134,7 +134,43 @@ def process_window(args: tuple) -> dict:
     """
     config, window_times, output_dir, results_file = args
     win_start, win_end, buf_start, buf_end = window_times
-    
+
+
+    # Prepare results
+    results = {
+        'window_start': win_start.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+        'window_end': win_end.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+        # Model results
+        'P_coef_N': np.nan,
+        'H_coef_N': np.nan,
+        'var_red_N': np.nan,
+        'P_coef_E': np.nan,
+        'H_coef_E': np.nan,
+        'var_red_E': np.nan,
+        'P_coef_Z': np.nan,
+        'H_coef_Z': np.nan,
+        'var_red_Z': np.nan,
+        # Cross-correlation results
+        'cc_zero_N_P': np.nan,
+        'cc_max_N_P': np.nan,
+        'cc_lag_N_P': np.nan,
+        'cc_zero_N_H': np.nan,
+        'cc_max_N_H': np.nan,
+        'cc_lag_N_H': np.nan,
+        'cc_zero_E_P': np.nan,
+        'cc_max_E_P': np.nan,
+        'cc_lag_E_P': np.nan,
+        'cc_zero_E_H': np.nan,
+        'cc_max_E_H': np.nan,
+        'cc_lag_E_H': np.nan,
+        'cc_zero_Z_P': np.nan,
+        'cc_max_Z_P': np.nan,
+        'cc_lag_Z_P': np.nan,
+        'cc_zero_Z_H': np.nan,
+        'cc_max_Z_H': np.nan,
+        'cc_lag_Z_H': np.nan,
+    }
+
     try:
         # Initialize baroseis object
         bs = baroseis(config)
@@ -186,41 +222,6 @@ def process_window(args: tuple) -> dict:
                 plt.close(fig)
             except:
                 print(f"Could not plot residuals for {win_start.strftime('%Y%m%d_%H%M')}")
-
-        # Prepare results
-        results = {
-            'window_start': win_start.datetime.strftime("%Y-%m-%d %H:%M:%S"),
-            'window_end': win_end.datetime.strftime("%Y-%m-%d %H:%M:%S"),
-            # Model results
-            'P_coef_N': np.nan,
-            'H_coef_N': np.nan,
-            'var_red_N': np.nan,
-            'P_coef_E': np.nan,
-            'H_coef_E': np.nan,
-            'var_red_E': np.nan,
-            'P_coef_Z': np.nan,
-            'H_coef_Z': np.nan,
-            'var_red_Z': np.nan,
-            # Cross-correlation results
-            'cc_zero_N_P': np.nan,
-            'cc_max_N_P': np.nan,
-            'cc_lag_N_P': np.nan,
-            'cc_zero_N_H': np.nan,
-            'cc_max_N_H': np.nan,
-            'cc_lag_N_H': np.nan,
-            'cc_zero_E_P': np.nan,
-            'cc_max_E_P': np.nan,
-            'cc_lag_E_P': np.nan,
-            'cc_zero_E_H': np.nan,
-            'cc_max_E_H': np.nan,
-            'cc_lag_E_H': np.nan,
-            'cc_zero_Z_P': np.nan,
-            'cc_max_Z_P': np.nan,
-            'cc_lag_Z_P': np.nan,
-            'cc_zero_Z_H': np.nan,
-            'cc_max_Z_H': np.nan,
-            'cc_lag_Z_H': np.nan,
-        }
 
         # Add coefficients for each component
         try:
@@ -288,6 +289,15 @@ def process_window(args: tuple) -> dict:
         return results
 
     except Exception as e:
+
+        # Save results to CSV with lock
+        df = pd.DataFrame([results])
+        with file_lock:
+            if os.path.exists(results_file):
+                df.to_csv(results_file, mode='a', header=False, index=False)
+            else:
+                df.to_csv(results_file, index=False)
+
         print(f"Error processing window {win_start} - {win_end}: {str(e)}")
         return None
 
