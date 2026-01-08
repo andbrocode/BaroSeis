@@ -1,0 +1,19 @@
+name: sixdegrees
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8
+  - numpy
+  - scipy
+  - matplotlib
+  - obspy
+  - pandas
+  - scikit-learn
+  - python-acoustics
+  - pip
+  - pip:
+    - numpy-typing
+
+variables:
+  PYTHONPATH: ${CONDA_PREFIX}/lib/python3.8/site-packages 

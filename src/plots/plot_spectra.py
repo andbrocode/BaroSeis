@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from obspy import Stream
 from scipy.signal import welch
+from scipy.fft import fft, fftfreq, fftshift
 
 def compare_spectra(st: Stream, config: Dict[str, Any], method: str = 'fft',
                    channel_type: str = 'J', fmin: float = 0.0005, fmax: float = 0.1,
@@ -88,9 +89,12 @@ def compare_spectra(st: Stream, config: Dict[str, Any], method: str = 'fft',
                 spec_comp = fft(tr_comp.data * win)
                 
                 # Get positive frequencies
-                pos_freq = freq[0:n//2]
-                mag_orig = np.abs(spec_orig[0:n//2]) * 2.0/n * yscale
-                mag_comp = np.abs(spec_comp[0:n//2]) * 2.0/n * yscale
+                pos_freq = fftshift(freq)
+                mag_orig = fftshift(np.abs(spec_orig) * tr_orig.delta / (2*np.pi)) * yscale
+                mag_comp = fftshift(np.abs(spec_comp) * tr_comp.delta / (2*np.pi)) * yscale
+                # pos_freq = freq[0:n//2]
+                # mag_orig = np.abs(spec_orig[0:n//2]) * 2.0/n * yscale
+                # mag_comp = np.abs(spec_comp[0:n//2]) * 2.0/n * yscale
                 
             else:  # method == 'welch'
                 # Welch's method
