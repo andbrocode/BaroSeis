@@ -1,0 +1,55 @@
+# Data source configuration
+baro_seed: BW.FFBI..BDO
+seis_seeds:
+  - BW.ROMY.40.BJZ
+  - BW.ROMY.40.BJN
+  - BW.ROMY.40.BJE
+
+# Data source
+data_source: sds
+path_to_baro_data: /home/andbro/bay200/mseed_online/archive/
+path_to_seis_data: /home/andbro/freenas/temp_archive/
+
+# Inventory files
+seis_inventory: ./metadata/station_BW_ROMY.xml
+baro_inventory: ./metadata/station_BW_FFBI.xml
+
+# PreProcessing parameters
+type: rotation
+metadata_correction: true
+remove_baro_response: true
+remove_seis_response: false
+remove_seis_sensitivity: false
+sampling_rate: 1.0
+pre_filter:
+- 5.0e-05
+- 0.0001
+- 1.0
+- 2.0
+
+# Processing parameters
+integrate_data: true
+fmin: 0.0005
+fmax: 0.03
+
+# Time window settings
+tbeg: '2024-03-01T00:00:00'  # Start time
+tend: '2025-01-01T00:00:00'  # End time
+window_hours: 3.0                     # Length of each window
+window_overlap: 0.5                   # Overlap fraction between windows
+buffer_hours: 1.5                     # Buffer time for each window
+
+# Output settings
+output_dir: output/coefficients       # Directory for results and plots
+
+# Optional metadata
+station_latitude: 48.162941   # ROMY latitude
+station_longitude: 11.275501  # ROMY longitude
+station_elevation: 560.0      # ROMY elevation
+
+# Additional parameters
+verbose: true                 # Print detailed progress information
+save_plots: false
+
+# Parallel processing parameters
+n_cores: 4                   # Number of CPU cores to use (0 for all available cores)
