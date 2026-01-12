@@ -71,8 +71,9 @@ def plot_residuals_derivatives(st: Stream, config: Dict[str, Any], time_unit: st
             rot_data = tr_rot.data * yscale
 
             # Define label before the if block
-            label = f"{'Tilt' if channel_type == 'A' else 'Rotation'}-{comp}"
-            
+            # label = f"{'Tilt' if channel_type == 'A' else 'Rotation'}-{comp}"
+            label = f"{comp}-Component"
+
             # Get predicted data if available - look for PP location with same channel
             tr_pred = (st.select(location="PP", channel=f"*{channel_type}{comp}").copy()[0]
                       if st.select(location="PP", channel=f"*{channel_type}{comp}").copy()
@@ -94,14 +95,14 @@ def plot_residuals_derivatives(st: Stream, config: Dict[str, Any], time_unit: st
                     if comp in config['p_coefficient'] and comp in config['h_coefficient']:
                         p_coef = config['p_coefficient'][comp] * 1e9 * 1e2  # Convert to nano units and hPa
                         h_coef = config['h_coefficient'][comp] * 1e9 * 1e2  # Convert to nano units and hPa
-                        coef_text = f"P: {p_coef:.3f} {coef_unit}\nH: {h_coef:.3f} {coef_unit}"
+                        coef_text = f"P: {p_coef:.0f} {coef_unit}\nH: {h_coef:.0f} {coef_unit}"
                         
                         # Add derivative coefficients if available
                         if 'dp_coefficient' in config and 'dh_coefficient' in config:
                             if comp in config['dp_coefficient'] and comp in config['dh_coefficient']:
                                 dp_coef = config['dp_coefficient'][comp] * 1e9 * 1e2
                                 dh_coef = config['dh_coefficient'][comp] * 1e9 * 1e2
-                                coef_text += f"\nDP: {dp_coef:.3f} {coef_unit}/s\nDH: {dh_coef:.3f} {coef_unit}/s"
+                                coef_text += f"\n$\delta_t$P: {dp_coef:.0f} s{coef_unit}\n$\delta_t$H: {dh_coef:.0f} s{coef_unit}"
                 
                 # Plot original and predicted data
                 ax[idx].plot(times, rot_data, label=label, color='black')
@@ -112,9 +113,13 @@ def plot_residuals_derivatives(st: Stream, config: Dict[str, Any], time_unit: st
                 
                 # Add coefficient text
                 if coef_text:
-                    ax[idx].text(0.02, 0.98, coef_text, 
-                               transform=ax[idx].transAxes,
-                               va='top', ha='left', fontsize=font-1)
+                    ax[idx].text(
+                        0.02, 0.98, coef_text, 
+                        backgroundcolor='white', 
+                        bbox=dict(alpha=0.7, facecolor='white', edgecolor='black', boxstyle='round,pad=0.5'),
+                        transform=ax[idx].transAxes,
+                        va='top', ha='left', fontsize=font-1
+                    )
                 
                 # Plot residual
                 ax[idx+1].plot(times, residual, color="grey", 

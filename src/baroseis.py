@@ -29,7 +29,7 @@ from .plots.plot_cwt import plot_cwt
 from .plots.plot_waveforms import plot_waveforms
 from .plots.plot_residuals import plot_residuals
 from .plots.plot_residuals_derivatives import plot_residuals_derivatives
-from .plots.plot_scatter_correlations import plot_scatter_correlations, plot_scatter_correlations_detailed
+from .plots.plot_scatter_correlations import plot_scatter_correlations
 # from .plots.plot_spectra import compare_spectra
 
 
@@ -389,6 +389,7 @@ class baroseis:
         # remove response
         for tr in self.st_seis + self.st_baro:
             try:
+                # for FFBI pressure data
                 if "D" == str(tr.stats.channel[1]) and self.config.get('remove_baro_response', False):
                     if self.config.get('pre_filter', False):
                         tr.remove_response(inventory=self.baro_inv, output="DEF", water_level=60, pre_filt=self.config['pre_filter'], plot=False)
@@ -398,6 +399,16 @@ class baroseis:
                     if "FFBI" in self.config['baro_seed'] and "BDO" in self.config['baro_seed']:
                         tr.data = tr.data * 1e2
                         print(f" >scaling FFBI.BDO barometer data by 1e2 (hPa -> Pa)")
+                elif "D" == str(tr.stats.channel[1]) and self.config.get('remove_baro_sensitivity', False):
+                    tr.remove_sensitivity(inventory=self.baro_inv)
+
+                # for FFBI pressure data (using manual info)
+                elif "D" == str(tr.stats.channel[1]) and self.config.get('remove_baro_gain', False):
+                    tr.data = tr.data *1.589e-6 *1e5   # gain=1 sensitivity_reftek=6.28099e5count/V; sensitivity = 1 mV/hPa
+                elif "F" == str(tr.stats.channel[1]) and self.config.get('remove_baro_gain', False):
+                    tr.data = tr.data *1.589e-6 /0.02  # gain=1 sensitivity_reftek=6.28099e5count/V; sensitivity_mb2005=0.02 VPa
+
+                # for ROMY rotations
                 elif "J" == str(tr.stats.channel[1]) and self.config.get('remove_seis_sensitivity', False):
                         tr.remove_sensitivity(inventory=self.seis_inv)
                 elif "H" == str(tr.stats.channel[1]) and self.config.get('remove_seis_response', False):
@@ -2441,30 +2452,3 @@ class baroseis:
         
         return plot_scatter_correlations(self, time_unit, channel_type, out, figsize, alpha, s)
 
-    def plot_scatter_correlations_detailed(self, time_unit: str = "minutes", channel_type: str = "A", 
-                                          out: bool = False, figsize: Tuple[int, int] = (20, 15),
-                                          alpha: float = 0.6, s: float = 1.0) -> Optional[plt.Figure]:
-        """
-        Plot detailed scatter plots with additional statistics and information.
-        
-        Similar to plot_scatter_correlations but with more detailed statistics,
-        including R², slope, intercept, and data quality information.
-        
-        Args:
-            time_unit: Time unit for x-axis ('minutes', 'hours', 'days', 'seconds')
-            channel_type: Type of channel to plot ('J', 'A', 'H')
-            out: If True, return figure object
-            figsize: Figure size (width, height)
-            alpha: Transparency for scatter points
-            s: Size of scatter points
-            
-        Returns:
-            matplotlib Figure object if out=True, otherwise None
-        """
-        if len(self.st) == 0:
-            raise ValueError("No data loaded. Run load_data() first")
-        
-        if channel_type not in ['J', 'A', 'H']:
-            raise ValueError("channel_type must be 'J', 'A', or 'H'")
-        
-        return plot_scatter_correlations_detailed(self, time_unit, channel_type, out, figsize, alpha, s)

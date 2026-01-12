@@ -67,8 +67,9 @@ def plot_residuals(st: Stream, config: Dict[str, Any], time_unit: str = "minutes
             rot_data = tr_rot.data * yscale
 
             # Define label before the if block
-            label = f"{'Tilt' if channel_type == 'A' else 'Rotation'}-{comp}"
-            
+            # label = f"{'Tilt' if channel_type == 'A' else 'Rotation'}-{comp}"
+            label = f"{comp}-Component"
+
             # Get predicted data if available - look for PP location with same channel
             tr_pred = (st.select(location="PP", channel=f"*{channel_type}{comp}").copy()[0]
                       if st.select(location="PP", channel=f"*{channel_type}{comp}").copy()

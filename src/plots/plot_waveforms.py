@@ -59,7 +59,7 @@ def plot_waveforms(st: Stream, config: Dict[str, Any], out: bool = False,
         times = tr_p.times(reftime=config['tbeg'])*tscale
         data = tr_p.data
         
-        ax[3].plot(times, data, label="FFBI.O", color='k')
+        ax[3].plot(times, data, label="Pressure", color='k')
         ax[3].fill_between(times, 0, data,
                           where=data>0, interpolate=True,
                           color='k', alpha=0.5)
@@ -72,7 +72,7 @@ def plot_waveforms(st: Stream, config: Dict[str, Any], out: bool = False,
         times = tr_h.times(reftime=config['tbeg'])*tscale
         data = tr_h.data
         
-        ax[4].plot(times, data, label="hilbert(FFBI.O)", color='darkgrey')
+        ax[4].plot(times, data, label="Hilbert(Pressure)", color='darkgrey')
         ax[4].fill_between(times, 0, data,
                           where=data>0, interpolate=True,
                           color='darkgrey', alpha=0.5)

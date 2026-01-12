@@ -108,7 +108,7 @@ class baroArray:
         self.st.merge(method=1)
         
         # Trim data to requested time window
-        # self.st.trim(self.config['tbeg'], self.config['tend'])
+        self.st.trim(self.config['tbeg'], self.config['tend'])
 
         # Check data quality
         self._check_data_quality()
@@ -356,8 +356,8 @@ class baroArray:
         self.st.detrend('linear')
         self.st.detrend('simple')
         self.st.detrend('demean')
-        self.st.taper(0.05)
-        
+        self.st.taper(0.05, type='cosine')
+
         # Apply bandpass filter if frequencies specified
         if self.config['fmin'] is not None and self.config['fmax'] is not None:
             if self.config['verbose']:
@@ -369,6 +369,7 @@ class baroArray:
                 corners=4,
                 zerophase=True
             )
+
         # Apply highpass filter if fmin specified
         elif self.config['fmin'] is not None:
             if self.config['verbose']:
@@ -379,6 +380,7 @@ class baroArray:
                 corners=4,
                 zerophase=True
             )
+
         # Apply lowpass filter if fmax specified
         elif self.config['fmax'] is not None:
             if self.config['verbose']:
@@ -626,11 +628,90 @@ class baroArray:
         # Store gradient stream
         self.st_grad = out.copy()
         
+        # Add gradient magnitude
+        self.gradient_magnitude = self.get_gradient_magnitude(out.select(channel='*N')[0].data, out.select(channel='*E')[0].data)
+
+        # Add gradient angle
+        self.gradient_angle_deg = self.get_azimuth(out.select(channel='*N')[0].data, out.select(channel='*E')[0].data, unit='degree')
+        self.gradient_angle_rad = self.get_azimuth(out.select(channel='*N')[0].data, out.select(channel='*E')[0].data, unit='radian')
+
         if self.config['verbose']:
             print("\nComputed pressure gradients:")
             print(self.st_grad)
         
         return self.st_grad
+
+    @staticmethod
+    def get_azimuth(north: Union[float, np.ndarray], 
+                    east: Union[float, np.ndarray], 
+                    unit: str = 'degree') -> Union[float, np.ndarray]:
+        """
+        Calculate azimuth angle from north and east components.
+        
+        Azimuth is measured from North (0°) going clockwise:
+        - North: 0° (or 0 rad)
+        - East: 90° (or π/2 rad)
+        - South: 180° (or π rad)
+        - West: 270° (or 3π/2 rad)
+        
+        Args:
+            north: North component (can be scalar or array)
+            east: East component (can be scalar or array)
+            unit: Output unit, either 'degree' or 'radian' (default: 'degree')
+        
+        Returns:
+            Azimuth angle in specified unit. For degrees: 0-360°, for radians: 0-2π
+        
+        Example:
+            >>> azimuth_deg = baroArray.get_azimuth(1.0, 0.0, unit='degree')  # Returns 0.0 (North)
+            >>> azimuth_deg = baroArray.get_azimuth(0.0, 1.0, unit='degree')  # Returns 90.0 (East)
+            >>> azimuth_rad = baroArray.get_azimuth(1.0, 1.0, unit='radian')  # Returns π/4
+        """
+        # Check if inputs are scalars
+        is_scalar = np.isscalar(north) and np.isscalar(east)
+        
+        # Convert to numpy arrays if needed
+        north = np.asarray(north)
+        east = np.asarray(east)
+        
+        # Calculate azimuth: arctan2(east, north) gives angle from north going clockwise
+        azimuth_rad = np.arctan2(east, north)
+        
+        # Convert to 0-2π range (instead of -π to π)
+        azimuth_rad = np.mod(azimuth_rad + 2 * np.pi, 2 * np.pi)
+        
+        # Convert to degrees if requested
+        if unit.lower() in ['degree', 'deg', 'degrees']:
+            azimuth = np.rad2deg(azimuth_rad)
+        elif unit.lower() in ['radian', 'rad', 'radians']:
+            azimuth = azimuth_rad
+        else:
+            raise ValueError(f"Unknown unit: {unit}. Use 'degree' or 'radian'")
+        
+        # Return scalar if input was scalar
+        if is_scalar:
+            return float(azimuth)
+        
+        return azimuth
+
+    @staticmethod
+    def get_gradient_magnitude(north: Union[float, np.ndarray], 
+                               east: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        """
+        Calculate gradient magnitude from north and east components.
+        """
+        return np.sqrt(north**2 + east**2)
+
+    def scale_data(self, scale: float = 1.0) -> None:
+        """
+        Scale data by a factor.
+        """
+        self.config['scale'] = scale
+        
+        st_new = self.st.copy()
+        for tr in st_new:
+            tr.data = tr.data * scale
+        self.st = st_new
 
     def compute_coherence(self, ref_station: Optional[str] = None, 
                          window_sec: float = 3600.0, overlap: float = 0.5,
@@ -770,18 +851,19 @@ class baroArray:
         plt.tight_layout()
         plt.show()
 
-    def plot_gradient(self, figsize: Tuple[int, int] = (15, 10), out: bool = False) -> None:
+    def plot_gradient(self, figsize: Tuple[int, int] = (15, 10), out: bool = False, unwrap: bool = False) -> None:
         """
         Plot pressure gradient analysis including:
         - All station pressures with reference station highlighted
         - Gradient components (E-W, N-S)
         - Gradient angle over time
         - Polar plot of gradient direction
+        - Unwrap gradient angle if unwrap=True
         
         Args:
             figsize: Figure size tuple (width, height)
             out: Return figure handle if True
-        
+            unwrap: Unwrap gradient angle if True
         Returns:
             matplotlib.figure.Figure if out=True
         """
@@ -827,56 +909,83 @@ class baroArray:
         
         # Plot reference station on top in black
         ax1.plot(times, ref_pressure.data, 'k-', label=ref_name, linewidth=1.5, zorder=5)
-        ax1.set_ylabel('Pressure (Pa)')
-        ax1.legend()
+        ax1.set_ylabel('Pressure (Pa)', fontsize=12)
+        ax1.legend(loc='upper right')
         ax1.grid(True, alpha=0.3, zorder=0)
         
         # Plot gradients
-        ax2.plot(times, grad_e.data, 'r-', label='East', linewidth=1, alpha=0.7, zorder=5)
-        ax2.plot(times, grad_n.data, 'b-', label='North', linewidth=1, alpha=0.7, zorder=5)
-        ax2.set_ylabel('Gradient (Pa/km)')
-        ax2.legend(ncol=2)
+        ax2.plot(times, grad_e.data, c='tab:blue', linewidth=1.5, label='East', alpha=0.7, zorder=5)
+        ax2.plot(times, grad_n.data, c='tab:orange', linewidth=1.5, label='North', alpha=0.7, zorder=5)
+        ax2.set_ylabel('Gradient (Pa/km)', fontsize=12)
+        ax2.legend(ncol=2, loc='lower right')
         ax2.grid(True, alpha=0.3, zorder=0)
         
         # Plot gradient angle
-        angles = np.rad2deg(np.arctan2(grad_n.data, grad_e.data))
-        # Ensure angles are between 0 and 360
-        angles = np.mod(angles, 360)
-        ax3.scatter(times, angles, c=times, cmap='viridis', alpha=0.5, s=2, zorder=5)
-        ax3.set_ylabel('Gradient\nAngle (°)')
-        ax3.set_ylim(-5, 365)
-        ax3.set_yticks(np.arange(0, 361, 90))
+        if unwrap:
+            angles_deg = np.unwrap(self.gradient_angle_deg, period=360)
+        else:
+            angles_deg = self.gradient_angle_deg
+    
+        ax3.scatter(times, angles_deg, c=times, cmap='rainbow', alpha=0.5, s=2, zorder=5)
+        ax3.set_ylabel('Gradient\nAzimuth (°)', fontsize=12)
+        if unwrap:
+            ticks  = np.arange(np.round(min(angles_deg/10),0)*10, np.round(max(angles_deg/10),0)*10, 90)
+            ax3.set_yticks(ticks)
+            ax3.set_yticklabels([f'{tick:.1f}' for tick in np.mod(ticks, 360)])
+        else:
+            ax3.set_yticks(np.arange(0, 361, 90))
+            ax3.set_ylim(-5, 365)
         ax3.grid(True, alpha=0.3, zorder=0)
-        ax3.set_xlabel('Time (hours)')
+        ax3.set_xlabel('Time (hours)', fontsize=12)
         
         # Polar plot of gradients
-        angles_rad = np.deg2rad(angles)
-        magnitudes = np.sqrt(grad_e.data**2 + grad_n.data**2)
-        
-        scatter = ax4.scatter(
-            angles_rad, magnitudes, 
+        scatterdummy = ax4.scatter(
+            self.gradient_angle_rad,
+            self.gradient_magnitude/max(self.gradient_magnitude)*0,
             c=times, 
-            cmap='viridis', 
+            cmap='rainbow', 
+            alpha=1.0, 
+            s=0.5,
+            zorder=5
+        )
+
+        scatter = ax4.scatter(
+            self.gradient_angle_rad,
+            self.gradient_magnitude/max(self.gradient_magnitude),
+            c=times, 
+            cmap='rainbow', 
             alpha=0.5, 
-            s=10,
+            s=5,
             zorder=5
         )
         
+        # add text with frequency band
+        if hasattr(self, 'config') and 'fmin' in self.config and 'fmax' in self.config:
+            ax1.text(0.8, 0.15, f'f = {self.config["fmin"]*1e3:.1f} - {self.config["fmax"]*1e3:.1f} mHz',
+                     transform=ax1.transAxes, fontsize=11, ha='center', va='top')
+
         # Add colorbar
         cax = fig.add_axes([0.94, 0.15, 0.02, 0.7])  # [left, bottom, width, height]
-        cbar = plt.colorbar(scatter, cax=cax)
-        cbar.set_label('Time (hours)')
+        cbar = plt.colorbar(scatterdummy, cax=cax)
+        cbar.set_label('Time (hours)', fontsize=12)
         
         # Customize polar plot
         ax4.set_theta_zero_location('N')
         ax4.set_theta_direction(-1)  # Clockwise
-        ax4.set_title('Gradient Direction')
+        # ax4.set_rlabel('Gradient Magnitude (Pa/km)', fontsize=12)
+        ax4.set_title('Gradient Direction', fontsize=12)
         
+        # Add labels for subplots
+        ax1.text(0.01, 0.88, "(a)", fontsize=11, transform=ax1.transAxes)
+        ax2.text(0.01, 0.88, "(b)", fontsize=11, transform=ax2.transAxes)
+        ax3.text(0.01, 0.88, "(c)", fontsize=11, transform=ax3.transAxes)
+        ax4.text(0.02, 0.96, "(d)", fontsize=11, transform=ax4.transAxes)
+
         # Add timestamp to plot
         start_time = ref_pressure.stats.starttime
-        title = f'Pressure Gradients - {start_time.date} {str(start_time.time)[:8]} UTC'
+        title = f'Spatial Pressure Gradients - {start_time.date} {str(start_time.time)[:8]} UTC'
         if hasattr(self, 'config') and 'fmin' in self.config and 'fmax' in self.config:
-            title += f' f = {self.config["fmin"]*1e3:.1f} - {self.config["fmax"]*1e3:.1f} mHz'
+            title += f' (f = {self.config["fmin"]*1e3:.1f} - {self.config["fmax"]*1e3:.1f} mHz)'
         plt.suptitle(title, y=0.95)
         
         plt.tight_layout()
