@@ -184,9 +184,10 @@ class baroseis:
             'out_seed': None,
 
             # remove response parameters
-            'remove_baro_response': True,
-            'remove_seis_sensitivity': True,
-            'remove_seis_response': True,
+            'remove_baro_gain': False, # set default to False
+            'remove_baro_response': False, # set default to False
+            'remove_seis_sensitivity': False, # set default to False
+            'remove_seis_response': False, # set default to False
 
         }
         
@@ -390,29 +391,39 @@ class baroseis:
         for tr in self.st_seis + self.st_baro:
             try:
                 # for FFBI pressure data
-                if "D" == str(tr.stats.channel[1]) and self.config.get('remove_baro_response', False):
-                    if self.config.get('pre_filter', False):
-                        tr.remove_response(inventory=self.baro_inv, output="DEF", water_level=60, pre_filt=self.config['pre_filter'], plot=False)
-                    else:
-                        tr.remove_response(inventory=self.baro_inv, output="DEF", water_level=60)
-                    # special scaling for FFBI.BDO
-                    if "FFBI" in self.config['baro_seed'] and "BDO" in self.config['baro_seed']:
-                        tr.data = tr.data * 1e2
-                        print(f" >scaling FFBI.BDO barometer data by 1e2 (hPa -> Pa)")
-                elif "D" == str(tr.stats.channel[1]) and self.config.get('remove_baro_sensitivity', False):
-                    tr.remove_sensitivity(inventory=self.baro_inv)
+                if "D" == str(tr.stats.channel[1]):
+                    # remove response
+                    if self.config.get('remove_baro_response', False):
+                        if self.config.get('pre_filter', False):
+                            tr.remove_response(inventory=self.baro_inv, output="DEF", water_level=60, pre_filt=self.config['pre_filter'], plot=False)
+                        else:
+                            tr.remove_response(inventory=self.baro_inv, output="DEF", water_level=60)
+                        # special scaling for FFBI.BDO
+                        if "FFBI" in self.config['baro_seed'] and "BDO" in self.config['baro_seed']:
+                            tr.data = tr.data * 1e2
+                            print(f" >scaling FFBI.BDO barometer data by 1e2 (hPa -> Pa)")
+                    # remove sensitivity
+                    elif self.config.get('remove_baro_sensitivity', False):
+                        tr.remove_sensitivity(inventory=self.baro_inv)
+                    # for FFBI pressure data (using manual info)
+                    elif self.config.get('remove_baro_gain', False):
+                        tr.data = tr.data *1.589e-6 *1e5   # gain=1 sensitivity_reftek=6.28099e5count/V; sensitivity = 1 mV/hPa
 
-                # for FFBI pressure data (using manual info)
-                elif "D" == str(tr.stats.channel[1]) and self.config.get('remove_baro_gain', False):
-                    tr.data = tr.data *1.589e-6 *1e5   # gain=1 sensitivity_reftek=6.28099e5count/V; sensitivity = 1 mV/hPa
-                elif "F" == str(tr.stats.channel[1]) and self.config.get('remove_baro_gain', False):
-                    tr.data = tr.data *1.589e-6 /0.02  # gain=1 sensitivity_reftek=6.28099e5count/V; sensitivity_mb2005=0.02 VPa
+                # for FFBI infrasound data
+                elif "F" == str(tr.stats.channel[1]):
+                    # remove gain
+                    if self.config.get('remove_baro_gain', False):
+                        tr.data = tr.data *1.589e-6 /0.02  # gain=1 sensitivity_reftek=6.28099e5count/V; sensitivity_mb2005=0.02 VPa
+                    # remove sensitivity
+                    elif self.config.get('remove_baro_sensitivity', False):
+                        tr.remove_sensitivity(inventory=self.baro_inv)
 
                 # for ROMY rotations
                 elif "J" == str(tr.stats.channel[1]) and self.config.get('remove_seis_sensitivity', False):
                         tr.remove_sensitivity(inventory=self.seis_inv)
                 elif "H" == str(tr.stats.channel[1]) and self.config.get('remove_seis_response', False):
                     tr.remove_response(inventory=self.seis_inv, output="ACC", water_level=60)
+
             except Exception as e:
                 print(f">Failed to remove some response: {str(e)}")
                 continue
@@ -2291,12 +2302,15 @@ class baroseis:
             
             # Set labels and title
             if db_scale:
-                ax.set_ylabel(f'Amplitude (dB rel. 1 {unit})', fontsize=font)
+                if method == 'fft':
+                    ax.set_ylabel(f'ASD (dB rel. 1 {unit}/√Hz)', fontsize=font)
+                else:
+                    ax.set_ylabel(f'ASD (dB rel. 1 {unit}^2/Hz)', fontsize=font)
             else:
                 if method == 'welch':
-                    ax.set_ylabel(f'Power Spectral Density (({unit})^2/Hz)', fontsize=font)
+                    ax.set_ylabel(f'PSD (({unit})^2/Hz)', fontsize=font)
                 else:
-                    ax.set_ylabel(f'Amplitude ({unit}/√Hz)')
+                    ax.set_ylabel(f'PSD ({unit}/√Hz)')
             if i == 2:  # Only add x-label to bottom plot
                 ax.set_xlabel('Frequency (Hz)', fontsize=font)
             
@@ -2321,11 +2335,7 @@ class baroseis:
             'H': 'Acceleration'
         }[channel_type]
         
-        title = f"{channel_name} Spectra Comparison using {str(method).upper()}\n"
-        title += f"Observed vs {'Residual' if compare_residual else 'Predicted'} | "
-        title += f"Frequency range: {fmin*1e3:.1f} - {fmax*1e3:.1f} mHz"
-        fig.suptitle(title, fontsize=font+1, y=0.95)
-        
+
         # Calculate variance reduction for each component
         variance_reductions = {}
         for comp in components:
@@ -2346,10 +2356,15 @@ class baroseis:
             if variance_reductions.get(comp) is not None:
                 vr_text += f"{comp}: {variance_reductions[comp]:.0f}%, "
                 has_vr = True
-        
+    
+        title = f"Observed vs {'Residual' if compare_residual else 'Predicted'} Spectrum\n"
+        title += f"Frequency range: {fmin*1e3:.1f} - {fmax*1e3:.1f} mHz"
+
         if has_vr:
-            fig.text(0.5, 0.01, vr_text[:-2], ha='center', fontsize=12)
-        
+            title += f"\n{vr_text[:-2]}"
+
+        fig.suptitle(title, fontsize=font+1, y=0.95)
+
         plt.tight_layout()
         return fig
 

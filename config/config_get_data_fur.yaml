@@ -1,0 +1,48 @@
+# Configuration dictionary
+
+# station parameters
+station_latitude: 48.162941
+station_longitude: 11.275501
+station_elevation: 560.0
+
+# set time window
+time_buffer: 3600.0  # Time buffer in seconds
+
+# processing parameters
+sampling_rate: 1.0  # Sampling rate of common stream in Hz
+
+# channel configurations
+# baro_seed: "BW.FFBI.30.BDO"
+baro_seed: "BW.FFBI..BDO"
+seis_seeds:
+  - "GR.FUR..HHZ"
+  - "GR.FUR..HHN"
+  - "GR.FUR..HHE"
+
+# path to station metadata
+baro_inventory: "./metadata/station_BW_FFBI.xml"
+seis_inventory: "./metadata/station_GR_FUR.xml"
+
+# data source
+data_source: 'sds'  # 'sds' or 'mseed_file' or 'mseed_online'
+
+# path to data archive
+path_to_baro_data: "/home/andbro/bay200/mseed_online/archive/"
+path_to_seis_data: "/home/andbro/bay200/mseed_online/archive/"  # FOR FUR
+
+# path to output
+path_to_figures: './figures'
+
+# metadata correction
+metadata_correction: true
+
+# remove baro response
+# remove_baro_response: true
+# pre_filter: (5e-5, 1e-4, 1e0, 2e0)
+remove_baro_gain: true
+
+# remove seis response
+remove_seis_response: true
+
+# verbosity
+verbose: true

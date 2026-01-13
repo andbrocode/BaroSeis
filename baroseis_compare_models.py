@@ -2,6 +2,7 @@
 # # ROMY - Barometric Models
 
 # %%
+from calendar import c
 import os
 import obspy as obs
 import matplotlib.pyplot as plt
@@ -312,7 +313,7 @@ for date in dates:
         # Plot
         fig = plot_vr_comparison(models)
 
-        fig.savefig(f"{path_to_figs}{date}_{station}_{cha}_model_vr_comparison.png", dpi=150, bbox_inches="tight")
+        fig.savefig(f"{path_to_figs}{date}_{station}_{cha.replace('*', '')}_model_vr_comparison.png", dpi=150, bbox_inches="tight")
 
         del fig
         # %%
@@ -440,13 +441,13 @@ for date in dates:
 
         fig = plot_waveform_comparison(seis_stream, model_results)
 
-        fig.savefig(f"{path_to_figs}{date}_{station}_{cha}_model_waveform_comparison.png", dpi=150, bbox_inches="tight")
+        fig.savefig(f"{path_to_figs}{date}_{station}_{cha.replace('*', '')}_model_waveform_comparison.png", dpi=150, bbox_inches="tight")
 
         del fig
 
         fig = plot_waveform_comparison(seis_stream, model_results, residual=True)
 
-        fig.savefig(f"{path_to_figs}{date}_{station}_{cha}_model_waveform_residual_comparison.png", dpi=150, bbox_inches="tight")
+        fig.savefig(f"{path_to_figs}{date}_{station}_{cha.replace('*', '')}_model_waveform_residual_comparison.png", dpi=150, bbox_inches="tight")
 
         del fig
         
@@ -685,7 +686,7 @@ for date in dates:
             fmax=fmax
         )
 
-        fig.savefig(f"{path_to_figs}{date}_{station}_{cha}_waveforms.png", dpi=150, bbox_inches="tight")
+        fig.savefig(f"{path_to_figs}{date}_{station}_{cha.replace('*', '')}_waveforms.png", dpi=150, bbox_inches="tight")
         del fig
         
         # %%
@@ -905,14 +906,14 @@ for date in dates:
         # ASD scale
         fig = plot_spectra_comparison(seis_stream, model_results, method='fft', db_scale=False, fmin=fmin, fmax=fmax)
 
-        fig.savefig(f"{path_to_figs}{date}_{station}_{cha}_model_spectra_comparison.png", dpi=150, bbox_inches="tight")
+        fig.savefig(f"{path_to_figs}{date}_{station}_{cha.replace('*', '')}_model_spectra_comparison.png", dpi=150, bbox_inches="tight")
 
         del fig
 
         # dB scale
         fig = plot_spectra_comparison(seis_stream, model_results, method='fft', db_scale=True, fmin=fmin, fmax=fmax)
 
-        fig.savefig(f"{path_to_figs}{date}_{station}_{cha}_model_spectra_comparison_db.png", dpi=150, bbox_inches="tight")
+        fig.savefig(f"{path_to_figs}{date}_{station}_{cha.replace('*', '')}_model_spectra_comparison_db.png", dpi=150, bbox_inches="tight")
 
         del fig
        

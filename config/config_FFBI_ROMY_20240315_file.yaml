@@ -11,11 +11,7 @@ overlap: 0.5
 path_to_baro_data: ./data/FFBI_ROMY_20240315.mseed
 path_to_figures: ./figures
 path_to_seis_data: ./data/FFBI_ROMY_20240315.mseed
-pre_filter:
-- 5.0e-05
-- 0.0001
-- 1.0
-- 2.0
+remove_baro_gain: true
 remove_baro_response: false
 remove_seis_response: false
 remove_seis_sensitivity: false
