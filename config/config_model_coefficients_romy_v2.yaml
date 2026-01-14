@@ -49,7 +49,7 @@ station_elevation: 560.0      # ROMY elevation
 
 # Additional parameters
 verbose: true                 # Print detailed progress information
-save_plots: false
+save_plots: true
 
 # Parallel processing parameters
 n_cores: 4                   # Number of CPU cores to use (0 for all available cores)

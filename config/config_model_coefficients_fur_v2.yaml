@@ -29,7 +29,7 @@ pre_filter:
 # Processing parameters
 integrate_data: False
 fmin: 0.0005
-fmax: 0.03
+fmax: 0.01 # 0.03
 
 # Time window settings
 tbeg: '2024-03-01T00:00:00'  # Start time

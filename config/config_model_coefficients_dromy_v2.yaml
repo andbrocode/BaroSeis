@@ -1,14 +1,14 @@
 # Data source configuration
 baro_seed: BW.FFBI..BDO
 seis_seeds:
-  - BW.DROMY..BHZ
-  - BW.DROMY..BHN
-  - BW.DROMY..BHE
+  - BW.DROMY..HHZ
+  - BW.DROMY..HHN
+  - BW.DROMY..HHE
 
 # Data source
 data_source: sds
 path_to_baro_data: /home/andbro/bay200/mseed_online/archive/
-path_to_seis_data: /home/andbro/bay200/mseed_online/archive/
+path_to_seis_data: /home/andbro/freenas/romy_archive/
 
 # Inventory files
 seis_inventory: ./metadata/station_BW_DROMY.xml
@@ -39,7 +39,7 @@ window_overlap: 0.5                   # Overlap fraction between windows
 buffer_hours: 1.5                     # Buffer time for each window
 
 # Output settings
-output_dir: output/coefficients_dromy       # Directory for results and plots
+output_dir: output/coefficients2       # Directory for results and plots
 
 # Optional metadata
 station_latitude: 48.162941   # ROMY latitude

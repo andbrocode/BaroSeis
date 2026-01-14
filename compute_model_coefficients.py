@@ -201,14 +201,14 @@ def process_window(args: tuple) -> dict:
         bs.st.taper(0.05, 'cosine')
         
         # Make waveform plot
-        # if config['save_plots']:
-        #     try:
-        #         fig = bs.plot_waveforms(time_unit="minutes", channel_type="A", out=True)
-        #         with file_lock:
-        #             fig.savefig(os.path.join(output_dir, f'waveforms_{win_start.strftime("%Y%m%d_%H%M")}.png'))
-        #         plt.close(fig)
-        #     except:
-        #         print(f"Could not plot waveforms for {win_start.strftime('%Y%m%d_%H%M')}")
+        if config['save_plots']:
+            try:
+                fig = bs.plot_waveforms(time_unit="minutes", channel_type="A", out=True)
+                with file_lock:
+                    fig.savefig(os.path.join(output_dir, f'waveforms_{win_start.strftime("%Y%m%d_%H%M")}.png'))
+                plt.close(fig)
+            except:
+                print(f"Could not plot waveforms for {win_start.strftime('%Y%m%d_%H%M')}")
 
         # Predict tilt from pressure
         bs.predict_tilt_from_pressure(method="least_squares", channel_type="A", zero_intercept=True, verbose=False)
