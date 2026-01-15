@@ -23,6 +23,7 @@ from obspy.geodetics.base import gps2dist_azimuth
 from obspy.clients.filesystem.sds import Client as SDSClient
 
 from .utils.decimator import Decimator
+from .utils.conversion_to_radians import conversion_to_radians
 from .plots.plot_coherence import plot_coherence
 from .plots.plot_cross_correlations import plot_cross_correlations
 from .plots.plot_cwt import plot_cwt
@@ -212,6 +213,10 @@ class baroseis:
         if 'tend' in self.config.keys() and self.config['tend'] is not None:
             self.config['tend'] = UTCDateTime(self.config['tend'])
 
+        # Initialize components list (will be populated after data is loaded)
+        self.seis_components = []
+        for seed in self.config['seis_seeds']:
+            self.seis_components.append(seed.split(".")[3][2])
 
     # =========================================================================
     # Private Utility Methods
@@ -317,7 +322,7 @@ class baroseis:
 
         if self.config['metadata_correction']:
             self._correct_metadata()
-        
+
         # check if data has only nan
         if np.isnan(self.st_baro[0].data).all():
             print("WARNING: barometer data has only nan values! Aborting...")
@@ -345,12 +350,13 @@ class baroseis:
         # First apply decimation where possible
         self.st = self._decimate_stream(self.st, self.sampling_rate)
 
-         # Check for data problems
+        # Check for data problems
         self._check_data_quality()
 
        # set raw data
         self.st0 = self.st.copy()
 
+       
         # Stop timer
         stop_timer = timeit.default_timer()
         if self.config['verbose']:
@@ -384,6 +390,13 @@ class baroseis:
                 channel=self.config['channel_code'],
                 level="response",
             )
+        elif self.config['tilt_inventory']:
+            # if tiltmetre.conf in metadata directory 
+            if os.path.exists(self.config['tilt_inventory']):
+                # read conversion file
+                confTilt = yaml.load(open(self.config['tilt_inventory']), Loader=yaml.FullLoader)
+            else:
+                raise ValueError("tiltmeter.conf not found in metadata directory")
         else:
             raise ValueError("seis_inventory not specified in config and fdsn_server not specified")
 
@@ -420,9 +433,19 @@ class baroseis:
 
                 # for ROMY rotations
                 elif "J" == str(tr.stats.channel[1]) and self.config.get('remove_seis_sensitivity', False):
-                        tr.remove_sensitivity(inventory=self.seis_inv)
+                    tr.remove_sensitivity(inventory=self.seis_inv)
                 elif "H" == str(tr.stats.channel[1]) and self.config.get('remove_seis_response', False):
                     tr.remove_response(inventory=self.seis_inv, output="ACC", water_level=60)
+
+                # for ROMY tiltmeter data
+                elif "A" == str(tr.stats.channel[1]) and self.config.get('remove_seis_sensitivity', False):
+
+                    # if tiltmetre.conf in metadata directory 
+                    if os.path.exists(self.config['tilt_inventory']):
+                        # use metadata to convert data to tilt in radians
+                        tr.data = conversion_to_radians(tr, confTilt[tr.stats.station])
+                    else:
+                        raise ValueError("tiltmeter.conf not found in metadata directory")
 
             except Exception as e:
                 print(f">Failed to remove some response: {str(e)}")
@@ -1262,7 +1285,7 @@ class baroseis:
         tr_h = self.st.select(channel="*DH").copy()[0]
         
         # Process each component
-        for comp in ['N', 'E', 'Z']:
+        for comp in self.seis_components:
             if verbose:
                 print(f"\nComponent {comp}:")
             
@@ -1430,7 +1453,7 @@ class baroseis:
         model_data = {}
 
         # Process each component
-        for comp in ['N', 'E', 'Z']:
+        for comp in self.seis_components:
             if verbose:
                 print(f"\nComponent {comp} (with derivatives):")
             
@@ -1519,33 +1542,21 @@ class baroseis:
                 print(f"Could not process component {comp}: {str(e)}")
                 continue
         
-        if out:
-            return {
-                'N': {
-                    'p_coefficient': self.p_coefficient['N'],
-                    'h_coefficient': self.h_coefficient['N'],
-                    'dp_coefficient': self.dp_coefficient['N'],
-                    'dh_coefficient': self.dh_coefficient['N'],
+        # Build output dictionary with results for all processed components
+        output_data = {}
+        for comp in self.seis_components:
+            if comp in model_data and comp in self.p_coefficient:
+                output_data[comp] = {
+                    'p_coefficient': self.p_coefficient[comp],
+                    'h_coefficient': self.h_coefficient[comp],
+                    'dp_coefficient': self.dp_coefficient[comp],
+                    'dh_coefficient': self.dh_coefficient[comp],
                     'time': tr_p.times(),
-                    'data': model_data['N']
-                },
-                'E': {
-                    'p_coefficient': self.p_coefficient['E'],
-                    'h_coefficient': self.h_coefficient['E'],
-                    'dp_coefficient': self.dp_coefficient['E'],
-                    'dh_coefficient': self.dh_coefficient['E'],
-                    'time': tr_p.times(),
-                    'data': model_data['E']
-                },
-                'Z': {
-                    'p_coefficient': self.p_coefficient['Z'],
-                    'h_coefficient': self.h_coefficient['Z'],
-                    'dp_coefficient': self.dp_coefficient['Z'],
-                    'dh_coefficient': self.dh_coefficient['Z'],
-                    'time': tr_p.times(),
-                    'data': model_data['Z']
+                    'data': model_data[comp]
                 }
-            }
+
+        if out:
+            return output_data
 
     def compute_cross_correlation(self, 
                                 win_time_s: Optional[float] = None,
@@ -2047,7 +2058,7 @@ class baroseis:
         
         # Store original predictions
         original_predictions = {}
-        for comp in ['N', 'E', 'Z']:
+        for comp in self.seis_components:
             tr_pred = self.st.select(location="PP", channel=f"*{channel_type}{comp}").copy()
             if tr_pred:
                 original_predictions[comp] = tr_pred[0].data
@@ -2070,7 +2081,7 @@ class baroseis:
             }
         }
         
-        for i, comp in enumerate(['N', 'E', 'Z']):
+        for i, comp in enumerate(self.seis_components):
             try:
                 # Get original data
                 tr_rot = self.st.select(channel=f"*{channel_type}{comp}").copy()[0]
@@ -2128,7 +2139,7 @@ class baroseis:
         plt.show()
         
         # Restore original predictions if they existed
-        for comp in ['N', 'E', 'Z']:
+        for comp in self.seis_components:
             if comp in original_predictions:
                 tr_pred = self.st.select(location="PP", channel=f"*{channel_type}{comp}").copy()[0]
                 tr_pred.data = original_predictions[comp]
@@ -2242,7 +2253,7 @@ class baroseis:
         gs = GridSpec(3, 1, figure=fig, hspace=0.2)
         
         # Component labels and colors
-        components = ['N', 'E', 'Z']
+        components = self.seis_components
         colors = ['tab:blue', 'tab:red', 'tab:green']
         
         # Unit label based on channel type

@@ -3,9 +3,9 @@ Utility functions and classes for baroseis package.
 """
 
 from .decimator import Decimator
-from .coherence import compute_coherence_windows
+from .conversion_to_radians import conversion_to_radians
 
 __all__ = [
     'Decimator',
-    'compute_coherence_windows',
+    'conversion_to_radians',
 ]

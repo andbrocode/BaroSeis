@@ -194,6 +194,9 @@ def process_window(args: tuple) -> dict:
                     tr.stats.channel = tr.stats.channel[0] + "A" + tr.stats.channel[-1]
                     if tr.stats.channel[-1] in ["N", "E"]:
                         tr.data = -tr.data/9.81
+        # elif config['type'] == "tilt":
+        #     print(max(bs.st[0].data))
+
 
         # Trim to actual window without buffer
         bs.st = bs.st.trim(win_start, win_end)
@@ -207,7 +210,8 @@ def process_window(args: tuple) -> dict:
                 with file_lock:
                     fig.savefig(os.path.join(output_dir, f'waveforms_{win_start.strftime("%Y%m%d_%H%M")}.png'))
                 plt.close(fig)
-            except:
+            except Exception as e:
+                print(e)
                 print(f"Could not plot waveforms for {win_start.strftime('%Y%m%d_%H%M')}")
 
         # Predict tilt from pressure
@@ -225,7 +229,18 @@ def process_window(args: tuple) -> dict:
 
         # Add coefficients for each component
         try:
-            for comp in ['N', 'E', 'Z']:
+            # Get actual components from bs.seis_components or extract from stream
+            if hasattr(bs, 'seis_components') and bs.seis_components:
+                components = bs.seis_components
+            else:
+                # Fallback: extract from stream (channel type 'A' for tilt)
+                components = []
+                for tr in bs.st.select(channel='*A*'):
+                    comp = tr.stats.channel[2]  # Third character is component
+                    if comp not in components:
+                        components.append(comp)
+            
+            for comp in components:
                 results[f'P_coef_{comp}'] = bs.p_coefficient.get(comp, np.nan)
                 results[f'H_coef_{comp}'] = bs.h_coefficient.get(comp, np.nan)
 
@@ -253,8 +268,19 @@ def process_window(args: tuple) -> dict:
             except:
                 hilbert_data = None
             
+            # Get actual components from bs.seis_components or extract from stream
+            if hasattr(bs, 'seis_components') and bs.seis_components:
+                components = bs.seis_components
+            else:
+                # Fallback: extract from stream (channel type 'A' for tilt)
+                components = []
+                for tr in bs.st.select(channel='*A*'):
+                    comp = tr.stats.channel[2]  # Third character is component
+                    if comp not in components:
+                        components.append(comp)
+            
             # Compute cross-correlations for each seismic component
-            for comp in ['N', 'E', 'Z']:
+            for comp in components:
                 try:
                     # Get seismic component data
                     seis_data = bs.st.select(channel=f'*A{comp}')[0].data

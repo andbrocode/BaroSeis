@@ -22,7 +22,20 @@ def plot_waveforms(st: Stream, config: Dict[str, Any], out: bool = False,
     Returns:
         matplotlib.figure.Figure if out=True
     """
-    Nrow, Ncol = 5, 1
+
+    # Extract unique components from the stream
+    components = []
+    for tr in st:
+        if tr.stats.channel[1] == channel_type:
+            comp = tr.stats.channel[2]
+            if comp not in components:
+                components.append(comp)
+    
+    # Check if we have any components
+    if len(components) == 0:
+        raise ValueError(f"No components found for channel type '{channel_type}' in stream")
+
+    Nrow, Ncol = len(components)+2, 1
     yscale = 1e9
     font = 12
 
@@ -37,9 +50,14 @@ def plot_waveforms(st: Stream, config: Dict[str, Any], out: bool = False,
     tscale = tscale_dict.get(time_unit)
 
     fig, ax = plt.subplots(Nrow, Ncol, figsize=(15, 12))
+    if Nrow == 1:
+        ax = [ax]  # Make it iterable if only one subplot
 
+    # Colors for components (cycle if more than 3)
+    colors = ['tab:blue', 'tab:orange', 'tab:red', 'tab:green', 'tab:purple', 'tab:brown']
+    
     # Plot rotation components
-    for comp, color, idx in zip(['Z', 'N', 'E'], ['tab:blue', 'tab:orange', 'tab:red'], range(3)):
+    for idx, (comp, color) in enumerate(zip(components, colors[:len(components)])):
         try:
             tr = st.select(channel=f"*{channel_type}{comp}").copy()[0]  # Select rotation channels
             times = tr.times(reftime=config['tbeg'])*tscale
@@ -52,15 +70,14 @@ def plot_waveforms(st: Stream, config: Dict[str, Any], out: bool = False,
         except Exception as e:
             print(f"Could not plot rotation component {comp}: {str(e)}")
 
-    # Plot pressure and Hilbert transform
     try:
         # Plot original pressure data
         tr_p = st.select(channel="*DO").copy()[0]  # Pressure channel
         times = tr_p.times(reftime=config['tbeg'])*tscale
         data = tr_p.data
         
-        ax[3].plot(times, data, label="Pressure", color='k')
-        ax[3].fill_between(times, 0, data,
+        ax[Nrow-2].plot(times, data, label="Pressure", color='k')
+        ax[Nrow-2].fill_between(times, 0, data,
                           where=data>0, interpolate=True,
                           color='k', alpha=0.5)
     except Exception as e:
@@ -72,8 +89,8 @@ def plot_waveforms(st: Stream, config: Dict[str, Any], out: bool = False,
         times = tr_h.times(reftime=config['tbeg'])*tscale
         data = tr_h.data
         
-        ax[4].plot(times, data, label="Hilbert(Pressure)", color='darkgrey')
-        ax[4].fill_between(times, 0, data,
+        ax[Nrow-1].plot(times, data, label="Hilbert(Pressure)", color='darkgrey')
+        ax[Nrow-1].fill_between(times, 0, data,
                           where=data>0, interpolate=True,
                           color='darkgrey', alpha=0.5)
     except Exception as e:
@@ -87,7 +104,7 @@ def plot_waveforms(st: Stream, config: Dict[str, Any], out: bool = False,
             ax[_n].spines[['bottom']].set_visible(False)
 
     # Set labels
-    for idx in range(3):
+    for idx in range(len(components)):
         if channel_type == "J":
             ax[idx].set_ylabel("Rotation Rate\n(nrad/s)", fontsize=font)
         elif channel_type == "A":
@@ -95,7 +112,7 @@ def plot_waveforms(st: Stream, config: Dict[str, Any], out: bool = False,
         elif channel_type == "H":
             ax[idx].set_ylabel("Acceleration (nm/s²)", fontsize=font)
 
-    for idx in [3, 4]:
+    for idx in [Nrow-2, Nrow-1]:
         ax[idx].set_ylabel("Pressure (Pa)", fontsize=font)
 
     ax[Nrow-1].set_xlabel(f"Time ({time_unit}) from {config['tbeg']}", fontsize=font)

@@ -55,11 +55,21 @@ def compare_spectra(st: Stream, config: Dict[str, Any], method: str = 'fft',
         yscale = 1e9
         ylabel = "Acceleration (nm/s²)"
     
-    # Create figure
-    fig, axes = plt.subplots(3, 1, figsize=figsize, sharex=True)
+    # Extract actual components from the stream
+    components = []
+    for tr in st:
+        if tr.stats.channel[1] == channel_type:
+            comp = tr.stats.channel[2]  # Third character is component
+            if comp not in components:
+                components.append(comp)
+    
+    # Create figure with appropriate number of subplots
+    fig, axes = plt.subplots(len(components), 1, figsize=figsize, sharex=True)
+    if len(components) == 1:
+        axes = [axes]  # Make it iterable
     
     # Plot each component
-    for i, comp in enumerate(['N', 'E', 'Z']):
+    for i, comp in enumerate(components):
         try:
             # Get original and predicted data
             tr_orig = st.select(channel=f"*{channel_type}{comp}", location="").copy()[0]

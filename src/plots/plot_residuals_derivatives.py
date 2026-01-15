@@ -56,11 +56,21 @@ def plot_residuals_derivatives(st: Stream, config: Dict[str, Any], time_unit: st
     }
     tscale = tscale_dict.get(time_unit, 1/60)  # Default to minutes
 
+    # Extract actual components from the stream
+    components = []
+    for tr in st:
+        if tr.stats.channel[1] == channel_type:
+            comp = tr.stats.channel[2]  # Third character is component
+            if comp not in components:
+                components.append(comp)
+    
+    # Adjust number of rows based on actual components
+    Nrow = len(components) * 2
+    
     # Create figure with shared x-axis
     fig, ax = plt.subplots(Nrow, Ncol, figsize=(15, 10), sharex=True)
     
-    # Plot each component (N, E, Z) with its residual
-    components = ['N', 'E', 'Z']
+    # Plot each component with its residual
     for i, comp in enumerate(components):
         idx = i * 2  # Index for main plot
 

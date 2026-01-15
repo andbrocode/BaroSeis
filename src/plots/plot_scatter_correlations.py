@@ -64,15 +64,29 @@ def plot_scatter_correlations(bs, time_unit: str = "minutes",
     }
     tscale = tscale_dict.get(time_unit, 1/60)
     
-    # Create figure and subplots
-    fig, axes = plt.subplots(3, 4, figsize=figsize)
+    # Get actual components from the baroseis object
+    if hasattr(bs, 'seis_components') and bs.seis_components:
+        components = bs.seis_components
+    else:
+        # Fallback: extract from stream
+        components = []
+        for tr in bs.st:
+            if tr.stats.channel[1] == channel_type:
+                comp = tr.stats.channel[2]
+                if comp not in components:
+                    components.append(comp)
+    
+    # Create figure and subplots (adjust rows based on actual components)
+    n_components = len(components)
+    fig, axes = plt.subplots(n_components, 4, figsize=figsize)
+    if n_components == 1:
+        axes = axes.reshape(1, -1)  # Make it 2D array
     fig.suptitle(f'Seismic vs Pressure Correlations - {channel_type} Components', 
                  fontsize=14, fontweight='bold')
     
     fontsize = 12
-
-    # Define components and pressure types
-    components = ['Z', 'N', 'E']
+    
+    # Define pressure types
     pressure_types = ['p', 'h', 'dh', 'dp']
     pressure_labels = ['P (Pa)', 'H (Pa)', '$\partial_t$H (Pa/s)', '$\partial_t$P (Pa/s)']
     
@@ -121,7 +135,7 @@ def plot_scatter_correlations(bs, time_unit: str = "minutes",
     for i, comp in enumerate(components):
         # Get seismic data for this component
         try:
-            tr_seis = bs.st.select(channel=f"*{comp}")[0]
+            tr_seis = bs.st.select(channel=f"*{channel_type}{comp}")[0]
             seis_data = tr_seis.data * yscale  # Convert to appropriate units
         except IndexError:
             print(f"Warning: Could not find seismic data for component {comp}")
