@@ -1,0 +1,35 @@
+# example 1 - jumps
+# config['tbeg'] = obspy.UTCDateTime("2024-03-16 12:00")
+# config['tend'] = obspy.UTCDateTime("2024-03-16 15:00")
+
+# example 2 - jumps not good
+# config['tbeg'] = obspy.UTCDateTime("2024-03-23 06:00")
+# config['tend'] = obspy.UTCDateTime("2024-03-23 17:00")
+
+# example 3 -long example (not very good)
+# config['tbeg'] = obspy.UTCDateTime("2024-03-23 00:00")
+# config['tend'] = obspy.UTCDateTime("2024-03-25 00:00")
+
+# example 5 - good
+config['tbeg'] = obspy.UTCDateTime("2024-03-24 15:00")
+config['tend'] = obspy.UTCDateTime("2024-03-24 18:00")
+
+# example 6 - okey
+# config['tbeg'] = obspy.UTCDateTime("2024-10-27 03:30")
+# config['tend'] = obspy.UTCDateTime("2024-10-27 07:00")
+
+# example 7 - with jump
+# config['tbeg'] = obspy.UTCDateTime("2024-09-04 16:00")
+# config['tend'] = obspy.UTCDateTime("2024-09-04 20:00")
+
+# example 8 - good
+# config['tbeg'] = obspy.UTCDateTime("2024-04-24 07:00")
+# config['tend'] = obspy.UTCDateTime("2024-04-24 18:00")
+
+# example 10 - good
+# config['tbeg'] = obspy.UTCDateTime("2024-08-29 15:00")
+# config['tend'] = obspy.UTCDateTime("2024-08-29 17:00")
+
+# example 11 - okey, small amplitudes
+# config['tbeg'] = obspy.UTCDateTime("2024-08-31 15:00")
+# config['tend'] = obspy.UTCDateTime("2024-08-31 19:00")

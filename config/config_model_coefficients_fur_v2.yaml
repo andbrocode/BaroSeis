@@ -39,7 +39,7 @@ window_overlap: 0.5                   # Overlap fraction between windows
 buffer_hours: 1.5                     # Buffer time for each window
 
 # Output settings
-output_dir: output/coefficients2       # Directory for results and plots
+output_dir: output/coefficients_fur       # Directory for results and plots
 
 # Optional metadata
 station_latitude: 48.162941   # ROMY latitude

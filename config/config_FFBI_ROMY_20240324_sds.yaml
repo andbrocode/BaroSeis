@@ -13,8 +13,8 @@ path_to_figures: ./figures
 path_to_seis_data: /home/andbro/freenas/temp_archive/
 remove_baro_gain: true
 remove_baro_response: false
-remove_seis_response: false
-remove_seis_sensitivity: true
+remove_seis_response: true
+remove_seis_sensitivity: false
 sampling_rate: 1.0
 seis_inventory: ./metadata/station_BW_ROMY.xml
 seis_seeds:
