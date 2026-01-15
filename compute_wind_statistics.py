@@ -51,29 +51,32 @@ def load_furt_stream(starttime, endtime, show_raw=False, sampling_rate=1.0,
 
     def _resample(df, freq='1s'):
         """Helper function to resample dataframe."""
+        # Work with a copy to avoid SettingWithCopyWarning
+        df = df.copy()
+        
         # Check for NaN in dates
         if df.date.isna().any():
             print(" -> NaN values found and removed from column date")
-            df = df.dropna(axis=0, subset=["date"])
+            df = df.dropna(axis=0, subset=["date"]).copy()
             try:
-                df["date"] = df["date"].astype(int)
+                df.loc[:, "date"] = df["date"].astype(int)
             except:
-                df["date"] = df["Date"].astype(int)
+                df.loc[:, "date"] = df["Date"].astype(int)
         
         # Make column with datetime
-        df['datetime'] = df['date'].astype(str).str.rjust(6,"0")+" "+df['time'].astype(str).str.rjust(6,"0")
+        df.loc[:, 'datetime'] = df['date'].astype(str).str.rjust(6,"0")+" "+df['time'].astype(str).str.rjust(6,"0")
 
-        # Drop datetime duplicates
-        df = df[df.duplicated("datetime", keep="first") != True]
+        # Drop datetime duplicates - use copy() to avoid view
+        df = df[df.duplicated("datetime", keep="first") != True].copy()
 
         # Convert to pandas datetime object
-        df['datetime'] = to_datetime(df['datetime'], format="%d%m%y %H%M%S", errors="ignore")
+        df.loc[:, 'datetime'] = to_datetime(df['datetime'], format="%d%m%y %H%M%S", errors="ignore")
 
         # Set datetime column as index
         df.set_index('datetime', inplace=True)
 
-        # Remove duplicates
-        df = df[~df.index.duplicated()]
+        # Remove duplicates - use copy() to avoid view
+        df = df[~df.index.duplicated()].copy()
 
         # Resample
         df = df.asfreq(freq=freq)
